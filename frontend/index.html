@@ -1,0 +1,357 @@
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kaiketsu – AI Antarctic Navigation System</title>
+  <meta name="description" content="AI-Enabled Antarctic Sea-Ice, Iceberg Trajectory, and Navigation Decision Support System by Team Kaiketsu | SIH 2026" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- NAV -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-brand">
+      <div class="nav-logo">
+        <span class="logo-icon">🧊</span>
+        <span class="logo-text">KAIKETSU</span>
+      </div>
+      <span class="nav-tagline">AI Antarctic Navigator</span>
+    </div>
+    <div class="nav-links">
+      <a href="#pipeline" class="nav-link">Pipeline</a>
+      <a href="#upload" class="nav-link">Analyze</a>
+      <a href="#training" class="nav-link">Train AI</a>
+      <a href="#routes" class="nav-link">Routes</a>
+    </div>
+    <div class="nav-status">
+      <span class="status-dot" id="statusDot"></span>
+      <span class="status-text" id="statusText">System Ready</span>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-bg-anim"></div>
+    <div class="hero-content">
+      <div class="hero-badge">SIH 2026 · Problem ID 26059 · Team Kaiketsu</div>
+      <h1 class="hero-title">
+        AI-Enabled Antarctic<br />
+        <span class="gradient-text">Sea-Ice & Iceberg</span><br />
+        Navigation System
+      </h1>
+      <p class="hero-sub">
+        13-module AI pipeline: SAR satellite imagery → preprocessing → segmentation → detection → tracking → trajectory → hazard fusion → route optimization — all running live in the browser.
+      </p>
+      <div class="hero-actions">
+        <button class="btn-primary" onclick="scrollTo('#upload')">🛰️ Analyze SAR Image</button>
+        <button class="btn-ghost" onclick="scrollTo('#pipeline')">📡 View Pipeline</button>
+      </div>
+      <div class="hero-stats">
+        <div class="stat-chip">🎯 20–30% Better Iceberg Detection</div>
+        <div class="stat-chip">⛽ 3–10% Fuel Savings</div>
+        <div class="stat-chip">📍 72h Trajectory Forecast</div>
+        <div class="stat-chip">🛡️ Real-time Deadlock Avoidance</div>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <canvas id="heroCanvas" width="520" height="520"></canvas>
+    </div>
+  </section>
+
+  <!-- PIPELINE STAGES -->
+  <section class="section" id="pipeline">
+    <div class="section-header">
+      <h2 class="section-title">🔬 AI Pipeline — 13 Modules</h2>
+      <p class="section-sub">From raw satellite data to optimized ship route</p>
+    </div>
+    <div class="pipeline-flow">
+      <div class="pipeline-stages" id="pipelineStages"></div>
+    </div>
+  </section>
+
+  <!-- UPLOAD / ANALYZE -->
+  <section class="section" id="upload">
+    <div class="section-header">
+      <h2 class="section-title">🛰️ SAR Image Analysis</h2>
+      <p class="section-sub">Upload a SAR image or choose a sample Antarctic dataset</p>
+    </div>
+    <div class="analyze-grid">
+      <!-- Upload Card -->
+      <div class="clay-card upload-card" id="dropZone">
+        <div class="upload-inner">
+          <div class="upload-icon">📡</div>
+          <h3>Drop SAR Image Here</h3>
+          <p>Supports .tif, .png, .jpg synthetic aperture radar imagery</p>
+          <input type="file" id="fileInput" accept=".tif,.png,.jpg,.jpeg" hidden />
+          <button class="btn-primary" onclick="document.getElementById('fileInput').click()">Browse File</button>
+          <div class="or-divider">— or use a sample —</div>
+          <div class="sample-grid" id="sampleGrid"></div>
+        </div>
+      </div>
+      <!-- Preview & Controls -->
+      <div class="clay-card analysis-card">
+        <div class="card-header">
+          <h3>📊 Analysis Console</h3>
+          <button class="btn-run" id="runBtn" onclick="runPipeline()">▶ Run Full Pipeline</button>
+        </div>
+        <div class="image-preview-wrap">
+          <canvas id="analysisCanvas" width="480" height="340"></canvas>
+          <div class="canvas-overlay" id="canvasOverlay">
+            <div class="overlay-msg">Upload or select a sample image to begin</div>
+          </div>
+        </div>
+        <!-- Step Progress -->
+        <div class="step-progress" id="stepProgress"></div>
+      </div>
+    </div>
+
+    <!-- Deadlock Avoidance Alert Modal -->
+    <div class="deadlock-modal-backdrop hidden" id="deadlockModal">
+      <div class="clay-card deadlock-card">
+        <div class="deadlock-header">
+          <span class="deadlock-icon">🛑</span>
+          <div>
+            <h3 class="deadlock-title">Deadlock Avoidance Triggered!</h3>
+            <span class="deadlock-subtitle">AI Model Not Trained For This File</span>
+          </div>
+        </div>
+        <div class="deadlock-body">
+          <p>The Kaiketsu AI Decision Support System is specifically trained on <strong>Synthetic Aperture Radar (SAR) Polar Imagery and Sea-Ice Data</strong>.</p>
+          <div class="deadlock-reason-box" id="deadlockReason">
+            ⚠️ <strong>Model Error:</strong> Non-SAR / Non-Iceberg Image Detected. Ships, landmasses, and standard photos are filtered out to prevent false detour deadlocks.
+          </div>
+        </div>
+        <div class="deadlock-actions">
+          <button class="btn-primary" onclick="dismissDeadlockModal()">Select Sample Antarctic SAR Dataset</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 11-Step Streamlit-Style Visual Pipeline Stream -->
+    <div class="streamlit-pipeline-stream" id="streamlitStream" style="display:none;">
+      <div class="section-header" style="margin-top: 40px; margin-bottom: 24px;">
+        <h3 class="section-title" style="font-size: 1.8rem;">🎬 11-Step End-to-End Execution Pipeline</h3>
+        <p class="section-sub">Live visual output from Satellite Input to Crew Decision</p>
+      </div>
+
+      <div class="stream-steps-container">
+        <!-- Step 1: Satellite Input -->
+        <div class="clay-card stream-step-card" id="vStep1">
+          <div class="step-badge">1. Satellite Input</div>
+          <p class="step-desc">Raw Synthetic Aperture Radar (SAR) input image from Sentinel-1 satellite.</p>
+          <div class="stream-img-wrap"><canvas id="vCanvas1" width="600" height="340"></canvas></div>
+        </div>
+
+        <!-- Step 2: Preprocessing -->
+        <div class="clay-card stream-step-card" id="vStep2">
+          <div class="step-badge">2. Preprocessing</div>
+          <p class="step-desc">Lee Filter noise reduction, radiometric calibration, and contrast enhancement applied to raw SAR image.</p>
+          <div class="stream-img-wrap"><canvas id="vCanvas2" width="600" height="340"></canvas></div>
+        </div>
+
+        <!-- Step 3: Segmentation -->
+        <div class="clay-card stream-step-card" id="vStep3">
+          <div class="step-badge">3. Segmentation</div>
+          <p class="step-desc">Deep U-Net binary mask separating open sea water from sea-ice floes and icebergs.</p>
+          <div class="stream-img-wrap"><canvas id="vCanvas3" width="600" height="340"></canvas></div>
+        </div>
+
+        <!-- Step 4: Iceberg Detection -->
+        <div class="clay-card stream-step-card" id="vStep4">
+          <div class="step-badge">4. Iceberg Detection</div>
+          <p class="step-desc">YOLO / ResUNet object detection bounding boxes with confidence scores.</p>
+          <div class="stream-img-wrap"><canvas id="vCanvas4" width="600" height="340"></canvas></div>
+          <div class="step-metric-chip" id="vMetrics4">Detected Icebergs: 2</div>
+        </div>
+
+        <!-- Step 5: Tracking -->
+        <div class="clay-card stream-step-card" id="vStep5">
+          <div class="step-badge">5. Tracking (Simulated)</div>
+          <p class="step-desc">Kalman Filter + DeepSORT multi-target tracking assigning persistent IDs.</p>
+          <div class="track-log-box" id="vTrackLog">
+            <div>🧊 Iceberg 1 — Track ID: TRK-101</div>
+            <div>🧊 Iceberg 2 — Track ID: TRK-102</div>
+          </div>
+        </div>
+
+        <!-- Step 6: Trajectory -->
+        <div class="clay-card stream-step-card" id="vStep6">
+          <div class="step-badge">6. Trajectory (Simulated)</div>
+          <p class="step-desc">Physics-informed LSTM model predicting 24h / 48h / 72h iceberg movement paths.</p>
+          <div class="stream-img-wrap"><canvas id="vCanvas6" width="600" height="340"></canvas></div>
+        </div>
+
+        <!-- Step 7: Drift Forecast -->
+        <div class="clay-card stream-step-card" id="vStep7">
+          <div class="step-badge">7. Drift Forecast (Simulated)</div>
+          <p class="step-desc">Ocean current & wind force forecasting drift direction and speed vectors.</p>
+          <div class="drift-log-box" id="vDriftLog">
+            <div>🧭 Iceberg 1 — Forecast drift: 1.04 km/h towards North-East</div>
+            <div>🧭 Iceberg 2 — Forecast drift: 1.13 km/h towards North-West</div>
+          </div>
+        </div>
+
+        <!-- Step 8: Hazard Fusion -->
+        <div class="clay-card stream-step-card" id="vStep8">
+          <div class="step-badge">8. Hazard Fusion</div>
+          <p class="step-desc">Gradient Boosted Tree (GBT) computing concentric danger zones around icebergs.</p>
+          <div class="stream-img-wrap"><canvas id="vCanvas8" width="600" height="340"></canvas></div>
+        </div>
+
+        <!-- Step 9: Route Optimization -->
+        <div class="clay-card stream-step-card" id="vStep9">
+          <div class="step-badge">9. Safety-First Route Optimization</div>
+          <p class="step-desc">A* + NSGA-II Pareto optimizer computing optimal safe route bypassing hazard zones.</p>
+          <div class="stream-img-wrap"><canvas id="vCanvas9" width="600" height="340"></canvas></div>
+          <div class="route-metrics-bar">
+            <div class="rm-item"><span class="rm-label">ROUTE DISTANCE</span><span class="rm-val">248 km</span></div>
+            <div class="rm-item"><span class="rm-label">ESTIMATED TIME</span><span class="rm-val">18 hours</span></div>
+            <div class="rm-item"><span class="rm-label">ESTIMATED FUEL</span><span class="rm-val">5200 litres</span></div>
+          </div>
+        </div>
+
+        <!-- Step 10: Onboard Validation -->
+        <div class="clay-card stream-step-card" id="vStep10">
+          <div class="step-badge">10. Onboard Validation</div>
+          <div class="check-list-box">
+            <div class="check-item">✔ 2 iceberg region(s) identified and mapped</div>
+            <div class="check-item">✔ Route cross-checked against current hazard map</div>
+            <div class="check-item">✔ Planned path stays clear of all detected danger zones</div>
+          </div>
+        </div>
+
+        <!-- Step 11: Crew Decision -->
+        <div class="clay-card stream-step-card crew-card" id="vStep11">
+          <div class="step-badge">11. Crew Decision</div>
+          <div class="crew-box">
+            <strong>Recommended Action:</strong> Proceed along the generated safe route. Continue monitoring for updated satellite passes.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results Summary -->
+    <div class="results-grid" id="resultsGrid" style="display:none;">
+      <div class="clay-card result-card" id="detectionResults">
+        <h3>🧊 Detected Icebergs</h3>
+        <div id="icebergList" class="iceberg-list"></div>
+      </div>
+      <div class="clay-card result-card" id="segmentResults">
+        <h3>🌊 Sea-Ice Segmentation</h3>
+        <canvas id="segCanvas" width="300" height="220"></canvas>
+        <div class="seg-legend">
+          <span class="leg-item"><span class="leg-dot leg-water"></span>Open Water</span>
+          <span class="leg-item"><span class="leg-dot leg-ice"></span>Sea Ice</span>
+          <span class="leg-item"><span class="leg-dot leg-berg"></span>Iceberg</span>
+        </div>
+      </div>
+      <div class="clay-card result-card" id="discriminatorResults">
+        <h3>⚠️ Deadlock Avoidance Log</h3>
+        <div id="avoidanceLog" class="avoidance-log"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TRAJECTORY & HAZARD MAP -->
+  <section class="section" id="routes">
+    <div class="section-header">
+      <h2 class="section-title">🗺️ Navigation Map — Hazard + Routes</h2>
+      <p class="section-sub">Iceberg trajectories, sea-ice forecast, and A* + NSGA-II optimized routes</p>
+    </div>
+    <div class="map-grid">
+      <div class="clay-card map-card">
+        <div class="map-toolbar">
+          <div class="layer-toggles">
+            <button class="layer-btn active" id="layerIce" onclick="toggleLayer('ice')">🌊 Sea Ice</button>
+            <button class="layer-btn active" id="layerBerg" onclick="toggleLayer('berg')">🧊 Icebergs</button>
+            <button class="layer-btn active" id="layerHazard" onclick="toggleLayer('hazard')">🔴 Hazard</button>
+            <button class="layer-btn active" id="layerRoutes" onclick="toggleLayer('routes')">📍 Routes</button>
+          </div>
+          <div class="route-selector">
+            <button class="route-btn active" id="routeSafe" onclick="selectRoute('safe')">🛡️ Safest</button>
+            <button class="route-btn" id="routeBalanced" onclick="selectRoute('balanced')">⚖️ Balanced</button>
+            <button class="route-btn" id="routeFast" onclick="selectRoute('fast')">⚡ Fastest</button>
+          </div>
+        </div>
+        <canvas id="navCanvas" width="720" height="480"></canvas>
+        <div class="map-legend">
+          <span class="leg-item"><span class="leg-dot" style="background:#00b4d8"></span>Sea Ice</span>
+          <span class="leg-item"><span class="leg-dot" style="background:#00f5d4"></span>Iceberg</span>
+          <span class="leg-item"><span class="leg-dot" style="background:#ff006e"></span>High Hazard</span>
+          <span class="leg-item"><span class="leg-dot" style="background:#3a86ff"></span>Safe Route</span>
+          <span class="leg-item"><span class="leg-dot" style="background:#ffbe0b"></span>Balanced Route</span>
+          <span class="leg-item"><span class="leg-dot" style="background:#fb5607"></span>Fast Route</span>
+        </div>
+      </div>
+      <div class="route-stats-col">
+        <div class="clay-card route-stat-card" id="routeStatCard">
+          <h3 id="routeStatTitle">🛡️ Safest Route</h3>
+          <div class="stat-rows" id="routeStatRows"></div>
+        </div>
+        <div class="clay-card forecast-card">
+          <h3>🌡️ 72h Sea-Ice Forecast</h3>
+          <div class="forecast-frames" id="forecastFrames"></div>
+        </div>
+        <div class="clay-card hazard-card">
+          <h3>🔥 Hazard Fusion Score</h3>
+          <div class="hazard-gauge" id="hazardGauge"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TRAINING PANEL -->
+  <section class="section" id="training">
+    <div class="section-header">
+      <h2 class="section-title">🤖 AI Training Control Panel</h2>
+      <p class="section-sub">Download datasets from Kaggle / Copernicus and train all 13 AI modules</p>
+    </div>
+    <div class="training-grid">
+      <!-- Dataset Downloader -->
+      <div class="clay-card dataset-card">
+        <h3>📦 Dataset Downloader</h3>
+        <div class="dataset-list" id="datasetList"></div>
+        <button class="btn-primary" id="downloadBtn" onclick="downloadDatasets()">⬇️ Download All Datasets</button>
+        <div class="download-progress" id="downloadProgress" style="display:none;">
+          <div class="prog-bar-wrap"><div class="prog-bar" id="dlBar"></div></div>
+          <div class="prog-label" id="dlLabel">Connecting...</div>
+        </div>
+      </div>
+      <!-- Training Status -->
+      <div class="clay-card training-status-card">
+        <h3>🧠 Model Training Status</h3>
+        <div class="model-list" id="modelList"></div>
+        <div class="train-actions">
+          <button class="btn-primary" onclick="trainAllModels()">🚀 Train All Models</button>
+          <button class="btn-ghost" onclick="resetTraining()">🔄 Reset</button>
+        </div>
+      </div>
+      <!-- Training Log -->
+      <div class="clay-card log-card">
+        <h3>📋 Training Log</h3>
+        <div class="log-terminal" id="logTerminal">
+          <div class="log-line log-info">$ Kaiketsu AI Training Console v1.0</div>
+          <div class="log-line log-info">$ Waiting for command...</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-brand">
+        <span class="logo-icon">🧊</span>
+        <span class="logo-text">KAIKETSU</span>
+      </div>
+      <p class="footer-text">Team Kaiketsu · Smart India Hackathon 2026 · Problem ID 26059 · Theme: Transportation & Logistics</p>
+      <p class="footer-sub">AI-Enabled Antarctic Sea-Ice, Iceberg Trajectory, and Navigation Decision Support System</p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
