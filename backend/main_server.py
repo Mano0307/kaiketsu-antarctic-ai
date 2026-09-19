@@ -41,7 +41,15 @@ class RouteRequest(BaseModel):
     start_lon: float = -53.10
     goal_lat: float = -67.50
     goal_lon: float = -50.20
-
+class ForecastRiskRequest(BaseModel):
+    start_lat: float = -68.42
+    start_lon: float = -53.10
+    goal_lat: float = -67.50
+    goal_lon: float = -50.20
+    ice_concentration: float = 0.28
+    iceberg_proximity_m: float = 1200.0
+    wind_speed_kts: float = 25.0
+    depth_m: float = 450.0
 class TrainRequest(BaseModel):
     model_name: str
     epochs: int = 10
@@ -79,7 +87,30 @@ def analyze_image():
 def route_api(req: RouteRequest):
     routes = optimize_routes((req.start_lat, req.start_lon), (req.goal_lat, req.goal_lon))
     return {k: v.__dict__ for k, v in routes.items()}
+@app.post("/api/forecast-risk-route")
+def forecast_risk_route(req: ForecastRiskRequest):
+    # Sea-ice forecast
+    forecast = forecast_sea_ice(req.ice_concentration)
 
+    # Environmental hazard risk
+    risk = evaluate_hazard_risk(
+        req.ice_concentration,
+        req.iceberg_proximity_m,
+        req.wind_speed_kts,
+        req.depth_m
+    )
+
+    # Route optimization
+    routes = optimize_routes(
+        (req.start_lat, req.start_lon),
+        (req.goal_lat, req.goal_lon)
+    )
+
+    return {
+        "forecast": forecast,
+        "risk": risk.__dict__,
+        "routes": {k: v.__dict__ for k, v in routes.items()}
+    }
 @app.get("/api/download-dataset")
 def download_api(dataset_key: str):
     try:
