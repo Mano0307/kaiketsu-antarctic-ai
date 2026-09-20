@@ -21,24 +21,32 @@ kaiketsu-antarctic-ai/
 │   ├── styles.css               # Claymorphism Design System (Navy Blue + Ice Cyan)
 │   └── app.js                   # Full interactive logic (canvas, pipeline, AI training)
 │
-├── backend/                     # Python AI Pipeline (13 Modules)
+├── backend/                     # Python AI Pipeline (feature-oriented + legacy compatibility)
+│   ├── features/                # Feature packages used by the app
+│   │   ├── __init__.py          # Feature registry + exports
+│   │   ├── ingestion.py         # Data prep + SAR preprocessing feature
+│   │   ├── ice_analysis.py      # Segmentation + detection + filtering feature
+│   │   ├── forecasting.py       # Trajectory + sea-ice forecasting feature
+│   │   ├── risk_and_routing.py  # Hazard scoring + route optimization feature
+│   │   └── api.py               # FastAPI layer exposed as a feature
+│   │
 │   ├── preprocessing.py         # Module 1  — Lee Filter + SAR Calibration + Geocoding
-│   ├── segmentation.py          # Module 2  — U-Net Sea-Ice Segmentation
-│   ├── detection.py             # Module 3  — YOLO/ResUNet Iceberg Detection
-│   ├── discriminator.py         # Module 4  — Ship-Iceberg Discriminator CNN
-│   ├── floe_filter.py           # Module 5  — Ice Floe Filter + Deadlock Avoidance
-│   ├── tracker.py               # Module 6  — Kalman Filter + DeepSORT Tracking
-│   ├── breakup_detector.py      # Module 7  — Breakup Detection (Change Graph)
-│   ├── trajectory.py            # Module 8  — Iceberg Trajectory (Physics + LSTM)
-│   ├── sea_ice_forecast.py      # Module 9  — Sea-Ice ConvLSTM Forecaster
-│   ├── hazard_fusion.py         # Module 10 — Hazard Risk Map (GBT Fusion)
-│   ├── vessel_performance.py    # Module 11 — Vessel Performance Model (NN/GBT)
-│   ├── route_optimizer.py       # Module 12 — Route Optimization (A* + NSGA-II)
-│   ├── dataset_loader.py        # Dataset downloader (Kaggle/Copernicus) + DataLoaders
-│   ├── main_server.py           # FastAPI REST API server
-│   └── requirements.txt         # Python dependencies
+│   ├── segmentation.py           # Module 2  — U-Net Sea-Ice Segmentation
+│   ├── detection.py              # Module 3  — YOLO/ResUNet Iceberg Detection
+│   ├── discriminator.py          # Module 4  — Ship-Iceberg Discriminator CNN
+│   ├── floe_filter.py            # Module 5  — Ice Floe Filter + Deadlock Avoidance
+│   ├── tracker.py                # Module 6  — Kalman Filter + DeepSORT Tracking
+│   ├── breakup_detector.py       # Module 7  — Breakup Detection (Change Graph)
+│   ├── trajectory.py             # Module 8  — Iceberg Trajectory (Physics + LSTM)
+│   ├── sea_ice_forecast.py       # Module 9  — Sea-Ice ConvLSTM Forecaster
+│   ├── hazard_fusion.py          # Module 10 — Hazard Risk Map (GBT Fusion)
+│   ├── vessel_performance.py     # Module 11 — Vessel Performance Model (NN/GBT)
+│   ├── route_optimizer.py        # Module 12 — Route Optimization (A* + NSGA-II)
+│   ├── dataset_loader.py         # Dataset downloader (Kaggle/Copernicus) + DataLoaders
+│   ├── main_server.py            # FastAPI REST API server
+│   └── requirements.txt          # Python dependencies
 │
-└── README.md                    # This file
+└── README.md                     # This file
 ```
 
 ---
