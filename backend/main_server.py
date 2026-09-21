@@ -4,12 +4,15 @@ Kaiketsu | SIH 2026 | Problem ID 26059
 """
 
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Optional
 
 from preprocessing import generate_synthetic_sar, preprocess_sar_image
+import numpy as np
+import cv2
+import base64
 from segmentation import UNet, segment_image
 from detection import detect_icebergs
 from discriminator import filter_ships_from_detections
@@ -63,16 +66,41 @@ def health():
     return {"status": "healthy", "modules_loaded": 13}
 
 @app.post("/api/analyze-image")
-def analyze_image():
-    raw_img = generate_synthetic_sar(shape=(512, 512))
+def analyze_image(file: UploadFile | None = File(default=None)):
+    # If a file was uploaded, read and decode it to a NumPy array
+    if file is not None:
+        contents = file.file.read()
+        arr = np.frombuffer(contents, dtype=np.uint8)
+        img = cv2.imdecode(arr, cv2.IMREAD_GRAYSCALE)
+        if img is None:
+            raise HTTPException(status_code=400, detail="Uploaded file is not a valid image")
+        raw_img = img.astype(np.float32)
+        source = "uploaded_file"
+    else:
+        raw_img = generate_synthetic_sar(shape=(512, 512))
+        source = "synthetic"
+
     proc_img, info = preprocess_sar_image(raw_img)
     mask, seg_stats = segment_image(proc_img)
     raw_dets = detect_icebergs(proc_img)
     bergs, ships = filter_ships_from_detections(raw_dets, proc_img)
     tracked, ignored, avoid_log = filter_all_detections(raw_dets, proc_img)
 
+    # Encode processed image as PNG and return base64 so frontend can display
+    try:
+        out_img = (np.clip(proc_img, 0.0, 1.0) * 255.0).astype(np.uint8)
+        success, png = cv2.imencode('.png', out_img)
+        if success:
+            b64 = base64.b64encode(png.tobytes()).decode('ascii')
+        else:
+            b64 = None
+    except Exception:
+        b64 = None
+
     return {
         "status": "success",
+        "source": source,
+        "filename": getattr(file, 'filename', None) if file is not None else None,
         "is_valid_sar": True,
         "deadlock_triggered": False,
         "deadlock_message": "SAR Polar imagery validated. Ship & non-ice floe deadlock filter active.",
@@ -80,7 +108,8 @@ def analyze_image():
         "segmentation": seg_stats,
         "detections": [b.__dict__ for b in tracked],
         "ignored_objects": [b.__dict__ for b in ignored],
-        "deadlock_avoidance_log": [l.__dict__ for l in avoid_log]
+        "deadlock_avoidance_log": [l.__dict__ for l in avoid_log],
+        "processed_image_base64": b64,
     }
 
 @app.post("/api/optimize-route")

@@ -7,7 +7,13 @@ import numpy as np
 import cv2
 import os
 import logging
-from typing import Tuple, Optional
+from pathlib import Path
+from typing import Tuple, Optional, List, Dict
+
+try:
+    from dataset_loader import PROJECT_DATA_DIR
+except ModuleNotFoundError:  # pragma: no cover - local direct execution fallback
+    PROJECT_DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -239,21 +245,136 @@ def generate_synthetic_sar(
     return np.clip(img, 0, 255)
 
 
+def collect_dataset_images(dataset_dir: str) -> List[str]:
+    """Collect image files inside a dataset folder recursively."""
+    if not dataset_dir or not os.path.exists(dataset_dir):
+        return []
+
+    supported_exts = {".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp"}
+    files: List[str] = []
+    for root, _, filenames in os.walk(dataset_dir):
+        for filename in filenames:
+            if Path(filename).suffix.lower() in supported_exts:
+                files.append(os.path.join(root, filename))
+    return sorted(files)
+
+
+def process_dataset_folder(
+    dataset_dir: str,
+    output_dir: str,
+    filter_size: int = 7,
+    calibrate: bool = True,
+    geocode: bool = True,
+) -> Dict[str, object]:
+    """Preprocess every image in a dataset folder and save the processed results.
+
+    Each dataset gets its own output subfolder. The function processes all images
+    and returns a summary with the exact count of images processed.
+    """
+    dataset_dir = os.path.abspath(dataset_dir)
+    output_dir = os.path.abspath(output_dir)
+    os.makedirs(output_dir, exist_ok=True)
+
+    image_paths = collect_dataset_images(dataset_dir)
+    summary: Dict[str, object] = {
+        "dataset_dir": dataset_dir,
+        "output_dir": output_dir,
+        "total_images": len(image_paths),
+        "processed": 0,
+        "failed": 0,
+        "saved_paths": [],
+    }
+
+    for image_path in image_paths:
+        try:
+            image = load_sar_image(image_path)
+            if image is None:
+                summary["failed"] += 1
+                continue
+
+            processed, _ = preprocess_sar_image(
+                image,
+                filter_size=filter_size,
+                calibrate=calibrate,
+                geocode=geocode,
+            )
+
+            rel_path = os.path.relpath(image_path, dataset_dir)
+            base_name = os.path.splitext(os.path.basename(rel_path))[0]
+            dataset_output_dir = os.path.join(output_dir, os.path.basename(dataset_dir))
+            os.makedirs(dataset_output_dir, exist_ok=True)
+            output_path = os.path.join(dataset_output_dir, f"{base_name}_preprocessed.png")
+            cv2.imwrite(output_path, (processed * 255).astype(np.uint8))
+
+            summary["processed"] += 1
+            summary["saved_paths"].append(output_path)
+            logger.info(f"Processed {image_path} -> {output_path}")
+        except Exception as exc:  # pragma: no cover - runtime safety
+            logger.exception(f"Error while preprocessing {image_path}: {exc}")
+            summary["failed"] += 1
+
+    return summary
+
+
 # ── CLI Test ──────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     print("=== Kaiketsu Preprocessing Module Test ===")
 
-    # Synthetic image
-    raw_img = generate_synthetic_sar(shape=(512, 512), num_icebergs=5, add_ship=True)
-    print(f"[+] Synthetic SAR image: shape={raw_img.shape}, "
-          f"min={raw_img.min():.1f}, max={raw_img.max():.1f}")
+    dataset_root = os.environ.get("KAIKETSU_DATASET_DIR", PROJECT_DATA_DIR)
+    output_root = os.path.join(os.path.dirname(__file__), "preprocessed_output")
 
-    # Run full preprocessing
-    processed, info = preprocess_sar_image(raw_img, filter_size=7)
-    print(f"[+] Preprocessed image: shape={processed.shape}")
-    print(f"[+] Info: {info}")
+    if os.path.exists(dataset_root):
+        image_files = collect_dataset_images(dataset_root)
+        print(f"[+] Detected dataset images under {dataset_root}: {len(image_files)} files")
 
-    # Save result
-    out_path = "preprocessed_sar.png"
-    cv2.imwrite(out_path, (processed * 255).astype(np.uint8))
-    print(f"[+] Saved: {out_path}")
+        if image_files:
+            dataset_dirs = [
+                os.path.join(dataset_root, name)
+                for name in sorted(os.listdir(dataset_root))
+                if os.path.isdir(os.path.join(dataset_root, name))
+            ]
+
+            if not dataset_dirs:
+                dataset_dirs = [dataset_root]
+
+            all_processed = 0
+            all_failed = 0
+            all_saved = []
+
+            for dataset_dir in dataset_dirs:
+                summary = process_dataset_folder(
+                    dataset_dir=dataset_dir,
+                    output_dir=output_root,
+                    filter_size=7,
+                    calibrate=True,
+                    geocode=True,
+                )
+                all_processed += int(summary["processed"])
+                all_failed += int(summary["failed"])
+                all_saved.extend(summary["saved_paths"])
+                print(f"[+] Dataset: {dataset_dir}")
+                print(f"    total images: {summary['total_images']}")
+                print(f"    processed: {summary['processed']}")
+                print(f"    failed: {summary['failed']}")
+                print(f"    output folder: {summary['output_dir']}")
+
+            print(f"[+] TOTAL images processed: {all_processed}")
+            print(f"[+] TOTAL images failed: {all_failed}")
+            print(f"[+] TOTAL saved outputs: {len(all_saved)}")
+        else:
+            print("[!] No image files found in dataset directory. Falling back to synthetic demo image.")
+            raw_img = generate_synthetic_sar(shape=(512, 512), num_icebergs=5, add_ship=True)
+            processed, info = preprocess_sar_image(raw_img, filter_size=7)
+            out_path = os.path.join(os.path.dirname(__file__), "preprocessed_sar.png")
+            cv2.imwrite(out_path, (processed * 255).astype(np.uint8))
+            print(f"[+] Synthetic image processed and saved to: {out_path}")
+            print(f"[+] Info: {info}")
+    else:
+        print(f"[!] Dataset directory not found: {dataset_root}")
+        print("[+] Running synthetic demo image instead.")
+        raw_img = generate_synthetic_sar(shape=(512, 512), num_icebergs=5, add_ship=True)
+        processed, info = preprocess_sar_image(raw_img, filter_size=7)
+        out_path = os.path.join(os.path.dirname(__file__), "preprocessed_sar.png")
+        cv2.imwrite(out_path, (processed * 255).astype(np.uint8))
+        print(f"[+] Synthetic image processed and saved to: {out_path}")
+        print(f"[+] Info: {info}")
