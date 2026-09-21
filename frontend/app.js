@@ -300,6 +300,29 @@ async function runPipeline() {
 
   const results = {};
 
+  // If user uploaded a real image, send it to backend analyze endpoint
+  if (state.uploadedImage) {
+    try {
+      const resp = await uploadToAPI(state.uploadedImage);
+      if (resp && resp.preprocessing) {
+        results.preprocess = resp.preprocessing;
+        // If processed image returned, draw it into analysisCanvas
+        if (resp.processed_image_base64) {
+          const imgEl = new Image();
+          imgEl.onload = () => {
+            const canvas = document.getElementById('analysisCanvas');
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(imgEl, 0, 0, canvas.width, canvas.height);
+          };
+          imgEl.src = 'data:image/png;base64,' + resp.processed_image_base64;
+        }
+      }
+    } catch (err) {
+      console.error('Upload failed', err);
+      setStatus('Upload failed', 'error');
+    }
+  }
+
   for (let i = 0; i < PIPELINE_STAGES.length; i++) {
     const stage = PIPELINE_STAGES[i];
 
@@ -344,6 +367,15 @@ async function runPipeline() {
   drawNavCanvas(results);
   document.getElementById('resultsGrid').style.display = 'grid';
   scrollTo('#streamlitStream');
+}
+
+// Upload helper
+async function uploadToAPI(file) {
+  const fd = new FormData();
+  fd.append('file', file, file.name);
+  const res = await fetch('http://localhost:8000/api/analyze-image', { method: 'POST', body: fd });
+  if (!res.ok) throw new Error('Upload failed: ' + res.statusText);
+  return await res.json();
 }
 
 function simulateStageResult(key, prev) {
